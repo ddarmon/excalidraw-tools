@@ -1,0 +1,14 @@
+{
+  "name": "excalidraw-tools-skills",
+  "owner": {
+    "name": "ddarmon"
+  },
+  "plugins": [
+    {
+      "name": "excalidraw",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/excalidraw"]
+    }
+  ]
+}

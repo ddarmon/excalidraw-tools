@@ -1,0 +1,55 @@
+{
+  "seed": 42,
+  "updated": 1700000000000,
+  "nodes": [
+    {
+      "id": "client",
+      "type": "ellipse",
+      "label": "Client",
+      "x": 120,
+      "y": 120,
+      "width": 180,
+      "height": 80,
+      "stroke": "#1971c2",
+      "background": "#e7f5ff"
+    },
+    {
+      "id": "api",
+      "type": "rectangle",
+      "label": "API",
+      "x": 120,
+      "y": 280,
+      "width": 180,
+      "height": 80,
+      "stroke": "#7048e8",
+      "background": "#d0bfff"
+    },
+    {
+      "id": "db",
+      "type": "rectangle",
+      "label": "DB",
+      "x": 120,
+      "y": 440,
+      "width": 180,
+      "height": 80,
+      "stroke": "#2f9e44",
+      "background": "#b2f2bb"
+    }
+  ],
+  "edges": [
+    {
+      "from": "client",
+      "to": "api",
+      "fromEdge": "bottom",
+      "toEdge": "top",
+      "label": "HTTPS"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "fromEdge": "bottom",
+      "toEdge": "top",
+      "label": "SQL"
+    }
+  ]
+}

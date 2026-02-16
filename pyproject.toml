@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "excalidraw-tools"
+version = "0.1.0"
+description = "Create, edit, validate, and render Excalidraw diagrams"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+preview = ["matplotlib"]
+dev = ["pytest", "matplotlib"]
+
+[project.scripts]
+excalidraw-tools = "excalidraw_tools.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/excalidraw_tools"]
