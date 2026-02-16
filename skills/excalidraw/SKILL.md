@@ -115,13 +115,17 @@ If the user specifies individual values (e.g., "Cascadia font, sketchy"), use th
 
 "Do you want a **custom render font**? The renderer can substitute any built-in Excalidraw font with a custom font at render time."
 
-Common choices (system fonts available in the renderer container):
+The `fontMap` parameter supports arbitrary `FROM:TO` mappings for any built-in font name (Virgil, Helvetica, Cascadia). Common choices (system fonts available in the renderer container):
 
-| Render font       | Maps from     | fontMap value                  |
-|--------------------|---------------|--------------------------------|
-| CMU Serif          | Helvetica (2) | `Helvetica:CMU+Serif`          |
-| CMU Sans Serif     | Helvetica (2) | `Helvetica:CMU+Sans+Serif`     |
-| CMU Typewriter Text| Cascadia (3)  | `Cascadia:CMU+Typewriter+Text` |
+| Render font        | Maps from      | fontMap value                   |
+|--------------------|----------------|---------------------------------|
+| CMU Serif          | Virgil (1)     | `Virgil:CMU+Serif`             |
+| CMU Serif          | Helvetica (2)  | `Helvetica:CMU+Serif`          |
+| CMU Sans Serif     | Virgil (1)     | `Virgil:CMU+Sans+Serif`        |
+| CMU Sans Serif     | Helvetica (2)  | `Helvetica:CMU+Sans+Serif`     |
+| CMU Typewriter Text| Cascadia (3)   | `Cascadia:CMU+Typewriter+Text` |
+
+Match the `FROM` font to the `fontFamily` used in the diagram. For hand-drawn style (fontFamily 1), map from Virgil. For clean style (fontFamily 2), map from Helvetica.
 
 If the user picks a custom render font, store the `fontMap` query string for the session and **append it to every render curl command**. The `.excalidraw` file still uses the built-in fontFamily integer (e.g., `fontFamily: 2`); the substitution happens at render time only.
 
@@ -144,16 +148,131 @@ The Python library is importable as `excalidraw_tools`:
 from excalidraw_tools import IdFactory, make_shape, new_document, save_diagram
 ```
 
+## Library API Reference
+
+All element-creating functions share this calling convention:
+
+- First two positional args are always `(elements, ids)` where `elements` is the list being built and `ids` is an `IdFactory` instance.
+- Each function **appends** the created element to `elements` and **returns** it.
+- Do NOT manually set `id`, `index`, `seed`, `versionNonce`, `updated`, or `boundElements` — the library handles these.
+
+### IdFactory
+
+```python
+ids = IdFactory(seed=42)
+
+ids.random_id()        # → "el-hbrpoig8f1cb"  (unique element ID)
+ids.random_id("arr")   # → "arr-fno6b9m80o2r" (custom prefix)
+ids.nonce()            # → 1738238662          (random int for seed/versionNonce)
+ids.next_index()       # → "a0", "a1", …       (fractional z-index)
+ids.reserve_id("my-id")  # prevent future duplicates
+```
+
+### make_shape
+
+```python
+make_shape(elements, ids, etype, x, y, width, height, *,
+           stroke="#1e1e1e", background="transparent",
+           stroke_width=2, stroke_style="solid",
+           roughness=1, element_id=None)
+```
+
+Supported `etype` values: `"rectangle"`, `"ellipse"`, `"diamond"`. Do **not** use `"line"` or `"arrow"` — use `make_arrow` instead.
+
+### make_text
+
+```python
+make_text(elements, ids, content, x, y, width, height, *,
+          container_id=None, font_size=20, font_family=1,
+          stroke="#1e1e1e")
+```
+
+- `width`/`height` are required — estimate from text length (e.g., `width = len(text) * font_size * 0.6`, `height = font_size * 1.5`).
+- Standalone text: omit `container_id` (defaults to `None`, sets `verticalAlign="top"`).
+- Bound label inside a shape: set `container_id=shape["id"]` (sets `verticalAlign="middle"`). Prefer `add_label` for this.
+
+### make_arrow
+
+```python
+make_arrow(elements, ids, x, y, points, *,
+           start_id=None, end_id=None,
+           stroke="#1e1e1e", stroke_width=2,
+           elbowed=False, source_edge=None, target_edge=None)
+```
+
+Use for **all** line and arrow elements — including curves, tick marks, axes, and polylines. `points` is a list of `[x, y]` offsets relative to `(x, y)` (e.g., `[[0, 0], [100, 0]]` for a horizontal segment).
+
+- Produces an arrow with `endArrowhead="arrow"` by default. For a plain line (no arrowhead), override on the returned dict: `el["endArrowhead"] = None` and `el["type"] = "line"`.
+- For multi-point curves, pass many points with roundness type 2 (the default for non-elbowed arrows).
+- `start_id`/`end_id` bind the arrow to shapes (updates `boundElements` on both).
+
+### add_label
+
+```python
+add_label(elements, ids, shape, label, *,
+          font_size=20, font_family=1, text_height=25)
+```
+
+Creates text centered inside `shape`. Automatically sets `containerId` and updates `shape["boundElements"]`.
+
+### connect
+
+```python
+connect(elements, ids, source, target, *,
+        source_edge="bottom", target_edge="top",
+        stroke="#1e1e1e", elbowed=False)
+```
+
+High-level arrow between two shapes. Calculates edge points and routing automatically. Preferred over `make_arrow` when connecting labeled shapes.
+
+### new_document / save_diagram / load_diagram
+
+```python
+doc = new_document(elements)          # wrap element list in document structure
+save_diagram("/path/to/file.excalidraw", doc)  # path first, data second
+doc = load_diagram("/path/to/file.excalidraw") # read existing diagram
+```
+
 ## Create Diagrams
 
 Always use the tools — never write raw `.excalidraw` JSON.
 
 1. **Spec + build (default):** Write a spec JSON with `nodes` and `edges`, then generate with `excalidraw-tools build`. Iterate with `excalidraw-tools edit` subcommands.
-2. **Library fallback:** If the spec format or edit commands cannot express what you need (e.g., dashed lines, standalone text, tick marks), write a small Python script that **imports from `excalidraw_tools`** (e.g., `from excalidraw_tools import IdFactory, make_shape, new_document, save_diagram`). This ensures correct per-type defaults.
+2. **Library fallback:** If the spec format or edit commands cannot express what you need (e.g., curves, custom lines, standalone text, tick marks), write a Python script using the library API (see Library API Reference above). Minimal working example:
+
+```python
+from excalidraw_tools import (
+    IdFactory, make_shape, make_text, make_arrow,
+    add_label, new_document, save_diagram,
+)
+
+ids = IdFactory(seed=42)
+elements = []
+
+# Rectangle with a bound label
+box = make_shape(elements, ids, "rectangle", 100, 100, 200, 80,
+                 stroke="#1971c2", background="#a5d8ff")
+add_label(elements, ids, box, "API Server")
+
+# Standalone text
+make_text(elements, ids, "Clients", 160, 30, 80, 25, font_size=16)
+
+# Arrow (axis, line, or connector)
+make_arrow(elements, ids, 200, 180, [[0, 0], [0, 60]],
+           stroke="#e03131")
+
+# Plain line (no arrowhead) — override the returned element
+line = make_arrow(elements, ids, 50, 200, [[0, 0], [300, 0]])
+line["type"] = "line"
+line["endArrowhead"] = None
+
+save_diagram("/tmp/example.excalidraw", new_document(elements))
+```
 
 **Warning — `make_shape` and element types:**
-- Do **not** use `make_shape` with `etype="line"`. It produces elements missing the required `points` array, which crashes the Kroki renderer (error: `Cannot read properties of undefined (reading 'length')`).
-- For grid lines, rules, or separators, use thin rectangles instead (e.g., `width=1` for vertical lines, `height=1` for horizontal lines).
+- Do **not** use `make_shape` with `etype="line"` or `etype="arrow"`. It produces elements missing the required `points` array, which crashes the Kroki renderer (error: `Cannot read properties of undefined (reading 'length')`).
+- Use `make_arrow` for all lines, arrows, axes, curves, and polylines. For a plain line without an arrowhead, override the returned dict (`el["type"] = "line"` and `el["endArrowhead"] = None`).
+- For simple grid lines or separators, thin rectangles also work (e.g., `width=1` for vertical, `height=1` for horizontal).
 
 ### Step 1: Spec + Build
 
