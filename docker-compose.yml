@@ -1,0 +1,98 @@
+services:
+
+  excalidraw:
+    image: excalidraw/excalidraw@sha256:3c2513e830bb6e195147c05b34ecf8393d0ba2b1cc86e93b407a5777d6135c6c
+    container_name: excalidraw
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      - excalidraw-room
+      - storage-backend
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Replacing WebSocket URL..."
+        find /usr/share/nginx/html/assets -type f -name "*.js" \
+          -exec sed -i 's|https://oss-collab\.excalidraw\.com|'"$$VITE_APP_WS_SERVER_URL"'|g' {} +
+
+        echo "Replacing storage backend URLs..."
+        # Replace POST URL first (it's a substring-superset of the GET URL)
+        find /usr/share/nginx/html/assets -type f -name "*.js" \
+          -exec sed -i 's|https://json\.excalidraw\.com/api/v2/post/|'"$$VITE_APP_BACKEND_V2_POST_URL"'|g' {} +
+        find /usr/share/nginx/html/assets -type f -name "*.js" \
+          -exec sed -i 's|https://json\.excalidraw\.com/api/v2/|'"$$VITE_APP_BACKEND_V2_GET_URL"'|g' {} +
+
+        echo "Nulling out Firebase config..."
+        find /usr/share/nginx/html/assets -type f -name "*.js" \
+          -exec sed -i 's|AIzaSyAd15pYlMci_xIp9ko6wkEsDzAAA0Dn0RU||g' {} +
+
+        echo "Starting nginx..."
+        nginx -g 'daemon off;'
+    environment:
+      - NODE_ENV=production
+      - VITE_APP_WS_SERVER_URL=http://localhost:3002
+      - VITE_APP_BACKEND_V2_GET_URL=http://localhost:3003/api/v2/
+      - VITE_APP_BACKEND_V2_POST_URL=http://localhost:3003/api/v2/post/
+
+  excalidraw-room:
+    image: excalidraw/excalidraw-room@sha256:2fe999f9be4379e3ee282fc45d75d84a691a6383dde33544514cc395287c7a70
+    container_name: excalidraw-room
+    ports:
+      - "3002:80"
+    restart: unless-stopped
+
+  storage-backend:
+    build: ./storage-backend
+    container_name: excalidraw-storage
+    ports:
+      - "3003:8080"
+    restart: unless-stopped
+    volumes:
+      - storage-data:/data
+    environment:
+      - DATA_DIR=/data
+
+  renderer:
+    build: ./renderer
+    container_name: excalidraw-renderer
+    ports:
+      - "3004:8081"
+    restart: unless-stopped
+    depends_on:
+      - kroki
+    volumes:
+      - ./renderer/fonts:/app/fonts:ro
+    environment:
+      - PORT=8081
+      - KROKI_URL=http://kroki:8000
+      - DEFAULT_WIDTH=1600
+      - DEFAULT_DPI=96
+      - DEFAULT_ZOOM=1
+      - DEFAULT_BACKGROUND=#ffffff
+      - REQUEST_TIMEOUT_MS=30000
+      - DEFAULT_FONT_MAP=
+
+  kroki:
+    image: yuzutech/kroki
+    container_name: kroki
+    restart: unless-stopped
+    depends_on:
+      - kroki-excalidraw
+    expose:
+      - "8000"
+    environment:
+      - KROKI_EXCALIDRAW_HOST=kroki-excalidraw
+    tmpfs:
+      - /tmp:exec
+
+  kroki-excalidraw:
+    image: yuzutech/kroki-excalidraw
+    container_name: kroki-excalidraw
+    restart: unless-stopped
+    expose:
+      - "8004"
+
+volumes:
+  storage-data:
