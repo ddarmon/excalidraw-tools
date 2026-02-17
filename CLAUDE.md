@@ -22,6 +22,20 @@ src/excalidraw_tools/
 ├── sync_spec.py         # Spec sync CLI wrapper
 ├── golden_check.py      # Regression test runner
 └── data/golden/         # Bundled test fixtures
+
+docker-compose.yml           # Self-hosted Excalidraw stack definition
+renderer/
+├── Dockerfile               # Node image + Chromium + font packages
+├── server.js                # /render/svg + /render/png API
+├── package.json
+└── fonts/
+    └── fonts.json           # Custom font file registry
+storage-backend/
+├── Dockerfile               # Node 20 Alpine image
+├── server.js                # Blob store for share links
+└── package.json
+scripts/
+└── render_diagrams.sh       # Batch render helper
 ```
 
 ## Module dependency graph
