@@ -7,6 +7,7 @@ WIDTH="${WIDTH:-}"
 HEIGHT="${HEIGHT:-}"
 DPI="${DPI:-}"
 ZOOM="${ZOOM:-}"
+SCALE="${SCALE:-}"
 DEFAULT_WIDTH="${DEFAULT_WIDTH:-1600}"
 BACKGROUND="${BACKGROUND:-}"
 TRANSPARENT="${TRANSPARENT:-false}"
@@ -24,6 +25,7 @@ Options:
   --height PX           Output height in pixels
   --dpi N               Output DPI (used with zoom mode)
   --zoom N              Zoom factor before DPI scaling (used with zoom mode)
+  --scale N             Pixel scale factor (e.g. 2 for 2x resolution)
   --background COLOR    Background color (e.g. #ffffff, white)
   --transparent BOOL    Transparent background: true/false (default: false)
   -h, --help            Show this help
@@ -63,6 +65,10 @@ while [[ $# -gt 0 ]]; do
     --height)
       HEIGHT="$2"
       HAS_SIZE_OVERRIDE=1
+      shift 2
+      ;;
+    --scale)
+      SCALE="$2"
       shift 2
       ;;
     --background)
@@ -126,6 +132,9 @@ if [[ -n "$DPI" ]]; then
 fi
 if [[ -n "$ZOOM" ]]; then
   QUERY="${QUERY}&zoom=${ZOOM}"
+fi
+if [[ -n "$SCALE" ]]; then
+  QUERY="${QUERY}&scale=${SCALE}"
 fi
 
 if [[ -n "$BACKGROUND" ]]; then

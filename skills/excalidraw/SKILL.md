@@ -3,6 +3,8 @@ name: excalidraw
 description: Create, edit, validate, render, and iterate on Excalidraw diagrams (.excalidraw JSON). Use when users ask to draw or modify diagrams, inspect existing drawings, connect nodes, move/relabel/recolor/delete elements, or review what is in a diagram file.
 ---
 
+------------------------------------------------------------------------
+
 ## ---
 
 # Excalidraw Interactive Diagramming
@@ -530,6 +532,24 @@ Chromium renderer
 
 If exact visual parity is required, open the `.excalidraw` file in
 Excalidraw.
+
+### High-resolution rendering with scale
+
+The Chromium renderer accepts a `scale` query parameter that sets the
+device pixel ratio for the screenshot. The viewport stays at the logical
+size, but Chromium renders at N× pixel density --- producing a PNG that
+is `scale × width` pixels wide with perfect text and color fidelity.
+
+```bash
+# 3× resolution (default 1600px width → 4800px output)
+curl -fsS -X POST "http://localhost:3004/render/png?scale=3" \
+  -H "Content-Type: text/plain" \
+  --data-binary "@FILE.excalidraw" \
+  -o FILE.png
+```
+
+`scale` composes with `width`: `?scale=2&width=3200` produces a 6400px
+wide PNG. The `render_diagrams.sh` wrapper also accepts `--scale N`.
 
 ### Font substitution at render time
 
