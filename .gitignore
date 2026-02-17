@@ -5,3 +5,4 @@ dist/
 build/
 .eggs/
 *.png
+node_modules/
