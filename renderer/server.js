@@ -331,7 +331,7 @@ async function renderPng(svg, options, fontFaceRules) {
     await page.setViewport({
       width: size.width,
       height: size.height,
-      deviceScaleFactor: 1
+      deviceScaleFactor: options.scale || 1
     });
     await page.setContent(html, {
       waitUntil: "load",
@@ -365,7 +365,9 @@ function parsePngOptions(query) {
     width = DEFAULT_WIDTH;
   }
 
-  return { dpi, zoom, width, height, transparent, background };
+  const scale = parsePositiveFloat(query.scale, 1, "scale");
+
+  return { dpi, zoom, width, height, transparent, background, scale };
 }
 
 app.post("/render/svg", async (req, res, next) => {
